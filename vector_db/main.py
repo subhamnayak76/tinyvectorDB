@@ -1,4 +1,5 @@
 from store import VectorStore
+from index_flat import FlatIndex
 
 store = VectorStore()
 store.add(
@@ -19,7 +20,9 @@ store.add(
     metadata={"source": "research"}
 )
 
-print("Stored documents:", len(store))
-
-print("\nVectors:")
-print(store.get_vectors())
+index = FlatIndex(store)
+query = "What is RAG?"
+query_vector = store.embedder.encode(query)
+results = index.search(query_vector, k=3)
+for r in results:
+    print(r)
