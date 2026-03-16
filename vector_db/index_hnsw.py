@@ -1,27 +1,20 @@
-import hnswlib
-import numpy as np
+from hnsw import Node, HNSW, get_random_layer, cosine_sim, get_nearest
 
 class HNSWIndex:
-    def __init__(self, store, space="cosine", M=16, ef_construction=200, ef=50):
+    def __init__(self, store):
         self.store = store
-        self.ef = ef
-        self.index = hnswlib.Index(space=space, dim=store.get_vectors().shape[1])
-        vecs = store.get_vectors()
-        self.index.init_index(max_elements=max(len(store)*2, 100), ef_construction=ef_construction, M=M)
-        self.index.add_items(vecs, list(range(len(store))))
-        self.index.set_ef(ef)
+        self.hnsw = HNSW()
+        for vector in store.vectors:
+            self.hnsw.insert(vector.tolist())
 
     def search(self, query_vector, k=5):
-        labels, distances = self.index.knn_query(
-            query_vector.reshape(1, -1).astype(np.float32),
-            k=min(k, len(self.store))
-        )
+        results = self.hnsw.search(query_vector.tolist(), k)
         return [
             {
                 "id":       self.store.ids[i],
-                "score":    round(1 - d, 4),
+                "score": round(cosine_sim(query_vector.tolist(), self.hnsw.nodes[i].vector), 4),
                 "text":     self.store.texts[i],
-                "metadata": self.store.metadata[i],
+                "metadata": self.store.metadata[i]
             }
-            for i, d in zip(labels[0], distances[0])
+            for i in results
         ]
